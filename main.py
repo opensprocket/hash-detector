@@ -55,10 +55,8 @@ def main():
         
         for bad_hash in bad_hashes:
             if bad_hash in scan_results:
+                remove_file(path)
                 
-    
-    
-
-
-if __name__ == "__main__":
+                
+if __name__ == '__main__':
     main()
