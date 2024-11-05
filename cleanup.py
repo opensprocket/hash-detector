@@ -6,7 +6,8 @@ malicious_hashes = [
     "4bc8448b818a983db84f44a4fafd60c4",
     "8e5d5629672fcf8664bc28f42f79453f",
     "d35482baeab98cd49621866021e9e6fa",
-    "5d80aaea305d1cb46b2e987270a3aa95"
+    "5d80aaea305d1cb46b2e987270a3aa95",
+    "d3724e3ec16d6f87e3b30197e05f6dd2",
 ]
 
 # Directories to be scanned
