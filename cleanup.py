@@ -11,7 +11,6 @@ malicious_hashes = [
     "d3724e3ec16d6f87e3b30197e05f6dd2",
     "919761b28a10d94b52194c85512135c3",
     "d2c0d67b375afc00569e17786db2b523",
-    # "bd940531c84bf45f725836189cc9a7df",
 ]
 
 # directories to be scanned
@@ -37,24 +36,26 @@ def md5(file_path):
     return hash_md5.hexdigest()
 
 '''
-Check if service is running
+Check if service is running, return true/false
 '''
 def check_service(service_name):
-    status = subprocess.runsystem(f'systemctl is-active {service_name}')
-    if status == "active":
-        return True
-    else:
+    status = os.system(f'systemctl is-active {service_name}')
+    if status != 0:
         return False
+    else:
+        return True
 
 '''
 Scan each directory for files that match the above hash list
 '''
 def scan_and_remove():
+    # file counter
     malicious_files_found = 0
+
     for directory in dirs_to_scan:
         for current_dir, dirs, files in os.walk(directory):
 
-            # exclude directories listed above using slicing
+            # exclude any directories listed above using slicing
             dirs[:] = [dir for dir in dirs if os.path.join(current_dir, dir) not in excluded_dirs]
 
             for file in files:
@@ -63,7 +64,9 @@ def scan_and_remove():
 
                 # check if it is a file and not a unix socket or otherwise
                 if os.path.isfile(file_path) and file_path not in excluded_files:
+
                     file_hash = md5(file_path)
+
                     if file_hash in malicious_hashes:
                         print(f"Malicious file found: {file_path} (hash: {file_hash})")
                         os.remove(file_path)
@@ -79,18 +82,18 @@ def scan_and_remove():
                             stats[file_hash] = 1
 
     print(f'Number of malicous files found: {malicious_files_found}')
-    print('Frequency of malware by hash:')
+    print('Detected malware this pass:')
     print(stats)
 
 def check_apache():
-    
-    # check index.php integrity
+
+    # check index.php integrity (fixes 418 status code)
     print("Checking index.php file integrity...")
 
     index_good_hash = "dc7e3ef52926cea2938b8398591a4a7e"
     temp_index_hash = md5("/var/www/html/index.php")
 
-    # restore if broken
+    # restore from good copy if tampered with
     if temp_index_hash != index_good_hash:
         os.system('sudo cp /home/blueteam/index.php /var/www/html/index.php')
         os.system('sudo chmod 644 /var/www/html/index.php')
@@ -98,44 +101,39 @@ def check_apache():
     else:
         print("No file integrity issues, continuing...")
 
-    # check service status
-        svc_status = check_service("apache2")
-    if svc_status:
-        print("Service is active, continuing...")
-    else:
-        # unmask service
-        os.system('sudo systemctl unmask apache2')
-
-        # check for other processes using port 80
-        result = subprocess.run(['sudo', 'lsof', '-i :80'], stdout=subprocess.PIPE)
-        lsof_output = result.stdout.decode()
-        lsof_results = lsof_output.splitlines()
-        
-        del lsof_results[0] # remove headers from data
-        
-        for line in lsof_results:
-            temp = line.split() # strip all whitespace
-            
-            # kill processes using port 80 that aren't apache
-            if temp[0] != 'apache2':
-                print(f'Stopping ')
-                os.system(f'kill -9 {temp[1]}')
-                
-
-
-    # restart apache
-    os.system("sudo service apache2 restart")
-    print("Apache service restarted...")
+    # install apache2
+    os.system('sudo apt install -y apache2')
     
+    # unmask systemd unit
+    os.system('sudo systemctl unmask apache2')
+    
+    # start service
+    os.system('sudo systemctl start apache2')
 
+    # check for other processes using port 80
+    result = subprocess.run(['sudo', 'lsof', '-i', ':80'], stdout=subprocess.PIPE)
+    lsof_output = result.stdout.decode()
+    lsof_results = lsof_output.splitlines()
+
+    del lsof_results[0] # remove headers from data
+
+    for line in lsof_results:
+        temp = line.split()
+
+        # kill processes using port 80 that aren't apache2
+        if temp[0] != 'apache2':
+            print(f'Terminating {temp[0]} - PID: {temp[1]}')
+            os.system(f'sudo kill -9 {temp[1]}')
+
+    # restart apache2
+    os.system("sudo systemctl apache2 restart")
+
+    # deprecated because 418 is handled above with index.php restore
     # # check response code
     # response = os.system("curl -Is http://localhost | head -n 1")
     # if '200 OK' in response:
     #     print("Return code OK, continuing...")
     # else:
-
-
-    # check index.php
 
 
 if __name__ == "__main__":
