@@ -15,7 +15,7 @@ The `cleanup.py` is run every minute using crontab, which runs the `check_apache
 Since this lab was timed, this script was written so that it would work and accomplish the objective of the lab within the short timeframe allotted. Here's some of the improvements I would make if I were to rewrite it: 
 - Improve the `apache2` recovery process by breaking it out into more granular pieces
   - Separate reinstalling, service unmasking and `index.php` recovery
-  - Implement a health check using `curl` to check for HTTP `200 OK` status
+  - Implement a more comprehensive health check using `curl` to check for HTTP `200 OK` status - work was started on this, but then was deemed out of scope for the short-term objective of finishing the lab
 - Log the things that were removed to a database (likely a local SQLite DB) for additional postmortem analysis
 - Use alternate approaches for comparing hash values on the system
   - Hash at the directory level to detect if there are any changes inside the directory (faster scanning)
